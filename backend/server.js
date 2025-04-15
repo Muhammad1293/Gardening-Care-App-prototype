@@ -1,37 +1,62 @@
-require("dotenv").config();
-const express = require("express");
-const cors = require("cors");
-const bodyParser = require("body-parser");
-const authRoutes = require("./routes/authRoutes");
+import express from "express";
+import cors from "cors";
+import dotenv from "dotenv";
+import authRoutes from "./routes/authRoutes.js";
+import userRoutes from "./routes/userRoutes.js";
+import plantRoutes from "./routes/plantRoutes.js"; // Plant routes
+import plantCareRoutes from "./routes/plantCareRoutes.js"; // Plant Care Recommendations
+import plantTrackingRoutes from "./routes/plantTrackingRoutes.js"; //  Added Plant Tracking routes
+import growthLogsRoutes from "./routes/growthLogsRoutes.js";
+import observationsRoutes from "./routes/observationsRoutes.js";
+import healthMonitoringRoutes from "./routes/healthMonitoringRoutes.js";
+import remindersRoutes from "./routes/remindersRoutes.js";
+import pool from "./config/db.js"; // Database connection
+
+dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT || 5000;
-
-// Middleware
 app.use(cors());
-app.use(bodyParser.json());
+app.use(express.json());
 
-// Debugging: Log incoming requests
-app.use((req, res, next) => {
-  console.log(`Incoming Request: ${req.method} ${req.url}`);
-  next();
-});
+//  Test Database Connection Before Starting Server
+const testDBConnection = async () => {
+  try {
+    const client = await pool.connect();
+    console.log("Database connected successfully!");
+    client.release();
+  } catch (error) {
+    console.error(" Database connection error:", error.message);
+    process.exit(1); // Stop server if DB connection fails
+  }
+};
 
-// Routes
+// API Routes
 app.use("/api/auth", authRoutes);
+app.use("/api/users", userRoutes);
+app.use("/api/plants", plantRoutes);
+app.use("/api/plant-care", plantCareRoutes);
+app.use("/api/plant-tracking", plantTrackingRoutes); // Added Plant Tracking API
+app.use("/api/growth-logs", growthLogsRoutes);
+app.use("/api/observations", observationsRoutes);
+app.use("/api/health-monitoring", healthMonitoringRoutes);
+app.use("/api/reminders", remindersRoutes);
 
-// Test Route
+
+//  Default Route (Optional)
 app.get("/", (req, res) => {
-  res.send("Gardening Care API is running...");
+  res.send("🌱 Gardening Care API is running...");
 });
 
-// Error Handling Middleware
+//  Global Error Handler
 app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).send("Something went wrong!");
+  console.error(" Server Error:", err);
+  res.status(500).json({ error: "Internal Server Error" });
 });
 
-// Start Server
-app.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
+//  Start Server After Confirming DB Connection
+const PORT = process.env.PORT || 5000;
+testDBConnection().then(() => {
+  app.listen(PORT, () => {
+    console.log(` Server is running on http://localhost:${PORT}`);
+  });
 });

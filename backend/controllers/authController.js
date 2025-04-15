@@ -1,92 +1,58 @@
-const bcrypt = require("bcryptjs");
-const jwt = require("jsonwebtoken");
-const { createUser, findUserByEmail, updateUserProfile } = require("../models/User");
+import bcrypt from "bcryptjs";
+import jwt from "jsonwebtoken";
+import pool from "../config/db.js";
+import dotenv from "dotenv";
 
-const JWT_SECRET = process.env.JWT_SECRET;
+dotenv.config();
 
-// Register User with Role and Gardening Preferences
-const registerUser = async (req, res) => {
-  const { username, email, password, role, gardening_preferences } = req.body;
+//  User Registration
+export const registerUser = async (req, res) => {
+  const { username, email, password, role } = req.body;
 
   try {
-    if (!role) {
-      return res.status(400).json({ msg: "Role is required" });
+    const existingUser = await pool.query("SELECT * FROM users WHERE email = $1", [email]);
+
+    if (existingUser.rows.length > 0) {
+      return res.status(400).json({ message: "User already exists" });
     }
 
-    const existingUser = await findUserByEmail(email);
-    if (existingUser) {
-      return res.status(400).json({ msg: "User already exists" });
-    }
+    const hashedPassword = await bcrypt.hash(password, 10);
 
-    const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(password, salt);
+    const newUser = await pool.query(
+      "INSERT INTO users (username, email, password_hash, role) VALUES ($1, $2, $3, $4) RETURNING *",
+      [username, email, hashedPassword, role]
+    );
 
-    const newUser = await createUser(username, email, hashedPassword, role, gardening_preferences);
-
-    const token = jwt.sign({ userId: newUser.id, role: newUser.role }, JWT_SECRET, { expiresIn: "1h" });
-
-    res.json({ token, role: newUser.role });
-  } catch (err) {
-    console.error(err.message);
-    res.status(500).send("Server Error");
+    res.status(201).json({ message: "User registered successfully" });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Server error" });
   }
 };
 
-// Login User
-const loginUser = async (req, res) => {
+//  User Login
+export const loginUser = async (req, res) => {
   const { email, password } = req.body;
 
   try {
-    const user = await findUserByEmail(email);
-    if (!user) {
-      return res.status(400).json({ msg: "Invalid Credentials" });
+    const user = await pool.query("SELECT * FROM users WHERE email = $1", [email]);
+
+    if (user.rows.length === 0) {
+      return res.status(400).json({ message: "Invalid credentials" });
     }
 
-    const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) {
-      return res.status(400).json({ msg: "Invalid Credentials" });
+    const validPassword = await bcrypt.compare(password, user.rows[0].password_hash);
+    if (!validPassword) {
+      return res.status(400).json({ message: "Invalid credentials" });
     }
 
-    const token = jwt.sign({ userId: user.id, role: user.role }, JWT_SECRET, { expiresIn: "1h" });
-
-    res.json({ token, role: user.role });
-  } catch (err) {
-    console.error(err.message);
-    res.status(500).send("Server Error");
-  }
-};
-
-// Get User Profile
-const getUserProfile = async (req, res) => {
-  try {
-    // Assume req.user is populated by your auth middleware with { email: ... }
-    const user = await findUserByEmail(req.user.email);
-    if (!user) {
-      return res.status(404).json({ msg: "User not found" });
-    }
-    res.json({
-      username: user.username,
-      email: user.email,
-      role: user.role,
-      gardening_preferences: user.gardening_preferences,
+    const token = jwt.sign({ user_id: user.rows[0].user_id, role: user.rows[0].role }, process.env.JWT_SECRET, {
+      expiresIn: "1h",
     });
-  } catch (err) {
-    console.error(err.message);
-    res.status(500).send("Server Error");
+
+    res.status(200).json({ token, role: user.rows[0].role });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Server error" });
   }
 };
-
-// Update User Profile
-const updateUserProfileHandler = async (req, res) => {
-  const { username, gardening_preferences } = req.body;
-
-  try {
-    const updatedUser = await updateUserProfile(req.user.email, username, gardening_preferences);
-    res.json({ msg: "Profile updated successfully", user: updatedUser });
-  } catch (err) {
-    console.error(err.message);
-    res.status(500).send("Server Error");
-  }
-};
-
-module.exports = { registerUser, loginUser, getUserProfile, updateUserProfile: updateUserProfileHandler };
