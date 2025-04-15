@@ -1,111 +1,286 @@
-import React from "react";
-import { AppBar, Toolbar, Typography, Button, IconButton, Box, Paper, TextField, MenuItem, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Avatar, Menu, MenuItem as MenuItemMUI } from "@mui/material";
+import React, { useState, useEffect } from "react";
+import {
+  AppBar, Toolbar, Typography, IconButton, Box, Paper, TextField, MenuItem, Table,
+  TableBody, TableCell, TableContainer, TableHead, TableRow, FormControl, InputLabel, Select,
+  Menu, Avatar, Drawer, List, ListItem, ListItemIcon, ListItemText, Divider, Button
+} from "@mui/material";
 import MenuIcon from "@mui/icons-material/Menu";
 import SearchIcon from "@mui/icons-material/Search";
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import LogoutIcon from "@mui/icons-material/ExitToApp";
+import LocalFloristIcon from "@mui/icons-material/LocalFlorist";
+import SpaIcon from "@mui/icons-material/Spa";
+import TrackChangesIcon from "@mui/icons-material/TrackChanges";
+
+import { useNavigate, useLocation } from "react-router-dom";
+import axios from "axios";
 
 const Dashboard = () => {
-  const [anchorEl, setAnchorEl] = useState(null);
   const navigate = useNavigate();
+  const location = useLocation();
+  const [plants, setPlants] = useState([]);
+  const [search, setSearch] = useState({ name: "", category: "", soil_type: "", climate: "" });
+  const [anchorEl, setAnchorEl] = useState(null);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [user, setUser] = useState(null);
 
-  const handleProfileClick = (event) => {
-    setAnchorEl(event.currentTarget);
+  useEffect(() => {
+    fetchPlants();
+    fetchUserData();
+  }, []);
+
+  const fetchPlants = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      const response = await axios.get("http://localhost:5000/api/plants", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setPlants(response.data);
+    } catch (error) {
+      console.error("Error fetching plants:", error);
+    }
   };
 
-  const handleClose = () => {
-    setAnchorEl(null);
+  const fetchUserData = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) return;
+      const response = await axios.get("http://localhost:5000/api/users/profile", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setUser(response.data);
+    } catch (error) {
+      console.error("Error fetching user data:", error);
+    }
   };
 
-  const handleUpdateProfile = () => {
-    handleClose();
-    navigate("/profile"); // Redirects to the profile update page
+  const handleSearch = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      const response = await axios.get("http://localhost:5000/api/plants/search", {
+        headers: { Authorization: `Bearer ${token}` },
+        params: search,
+      });
+      setPlants(response.data);
+    } catch (error) {
+      console.error("Error searching plants:", error);
+    }
   };
+
+  const handleMenuClick = (event) => setAnchorEl(event.currentTarget);
+  const handleMenuClose = () => setAnchorEl(null);
+  const handleLogout = () => {
+    localStorage.removeItem("token");
+    navigate("/login");
+  };
+
+  const toggleDrawer = (open) => () => setDrawerOpen(open);
 
   return (
-    <Box sx={{ width: "100vw", height: "100vh", backgroundColor: "#E8F5E9", display: "flex", flexDirection: "column" }}>
-      
-      {/* Full Width Header */}
-      <AppBar position="static" sx={{ width: "100vw", backgroundColor: "green" }}>
-        <Toolbar>
-          <IconButton edge="start" color="inherit" aria-label="menu">
-            <MenuIcon sx={{ color: "white" }} />
+    <Box sx={{ width: "100%", height: "100vh", backgroundColor: "#E8F5E9" }}>
+      {/* AppBar */}
+      <AppBar position="fixed" sx={{ backgroundColor: "green" }}>
+        <Toolbar sx={{ justifyContent: "space-between" }}>
+          {/* Left: Menu Button */}
+          <IconButton edge="start" color="white" onClick={toggleDrawer(true)} sx={{ color: "white"}}>
+            <MenuIcon />
           </IconButton>
-          <Typography variant="h6" sx={{ flexGrow: 1, color: "white" }}>
+
+          {/* Center Title */}
+          <Typography variant="h6" sx={{ flexGrow: 1, color:"white"}}>
             Gardening Care Dashboard
           </Typography>
 
-          {/* Profile Section */}
-          <Box sx={{ display: "flex", alignItems: "center", marginRight: 2 }}>
-            <IconButton onClick={handleProfileClick}>
-              <Avatar sx={{ width: 40, height: 40 }} /> {/* Bigger profile icon */}
-            </IconButton>
-            <Typography variant="body1" sx={{ color: "white", marginLeft: 1 }}>Username</Typography>
-          </Box>
+          {/* Right: Profile */}
+          {user && (
+            <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+              <Box sx={{ cursor: "pointer", display: "flex", alignItems: "center" }} onClick={handleMenuClick}>
+                <Avatar sx={{ bgcolor: "#ffffff", color: "green", width: 40, height: 40 }}>
+                  {user.username ? user.username.charAt(0).toUpperCase() : "U"}
+                </Avatar>
+                <Box sx={{ ml: 1 }}>
+                  <Typography sx={{ color: "white", fontWeight: "bold" }}>{user.username}</Typography>
+                  <Typography sx={{ color: "white", fontSize: "12px" }}>{user.role}</Typography>
+                </Box>
+              </Box>
 
-          <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={handleClose}>
-            <MenuItemMUI onClick={handleUpdateProfile}>Update Profile</MenuItemMUI>
-          </Menu>
+              <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={handleMenuClose}>
+                <MenuItem onClick={() => { handleMenuClose(); navigate("/profile"); }}>My Profile</MenuItem>
+              </Menu>
 
-          <Button color="inherit" sx={{ color: "white" }}>Logout</Button>
+              <IconButton onClick={handleLogout} sx={{ color: "white" }}>
+                <LogoutIcon />
+              </IconButton>
+            </Box>
+          )}
         </Toolbar>
       </AppBar>
 
-      {/* Main Content */}
-      <Box sx={{ display: "flex", flex: 1, padding: 2 }}>
-        
-        {/* Sidebar Menu */}
-        <Paper sx={{ width: 250, padding: 2, backgroundColor: "#FFFFFF", marginRight: 2 }}>
-          <Typography variant="h6" sx={{ fontWeight: "bold", display: "flex", alignItems: "center" }}>
-            🌱 Gardening Menu
-          </Typography>
-          <Typography variant="body2">
-            Add future features here like weather updates, gardening tips, etc.
-          </Typography>
-        </Paper>
-
-        {/* Search Section */}
-        <Box sx={{ flex: 1 }}>
-          <Paper sx={{ padding: 3, backgroundColor: "#FFFFFF", marginBottom: 2 }}>
-            <Typography variant="h6" sx={{ fontWeight: "bold", display: "flex", alignItems: "center" }}>
-              🌿 Search for Plants
-            </Typography>
-            <Box sx={{ display: "flex", gap: 2, marginTop: 2 }}>
-              <TextField label="Plant Name" variant="outlined" fullWidth />
-              <TextField select label="Type" variant="outlined" sx={{ minWidth: 150 }}>
-                <MenuItem value="All">All Types</MenuItem>
-                <MenuItem value="Flowering">Flowering</MenuItem>
-                <MenuItem value="Vegetable">Vegetable</MenuItem>
-              </TextField>
-              <Button variant="contained" color="success" startIcon={<SearchIcon />}>
-                Search
-              </Button>
-            </Box>
-          </Paper>
-
-          {/* Plant Data Table */}
-          <Paper sx={{ padding: 2, backgroundColor: "#FFFFFF" }}>
-            <TableContainer>
-              <Table>
-                <TableHead>
-                  <TableRow sx={{ backgroundColor: "#66BB6A" }}>
-                    <TableCell sx={{ fontWeight: "bold", color: "white" }}>Name</TableCell>
-                    <TableCell sx={{ fontWeight: "bold", color: "white" }}>Type</TableCell>
-                    <TableCell sx={{ fontWeight: "bold", color: "white" }}>Age</TableCell>
-                    <TableCell sx={{ fontWeight: "bold", color: "white" }}>Growth Stage</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  <TableRow>
-                    <TableCell colSpan={4} sx={{ textAlign: "center" }}>
-                      No plants found 🌱
-                    </TableCell>
-                  </TableRow>
-                </TableBody>
-              </Table>
-            </TableContainer>
-          </Paper>
+      {/* Sidebar Drawer with improved hover and active states */}
+      <Drawer anchor="left" open={drawerOpen} onClose={toggleDrawer(false)}>
+        <Box sx={{ width: 250 }} role="presentation" onClick={toggleDrawer(false)}>
+          <List>
+            <ListItem 
+              button 
+              onClick={() => navigate("/dashboard")}
+              sx={{
+                cursor: 'pointer',
+                backgroundColor: location.pathname === '/dashboard' ? '#e8f5e9' : 'inherit',
+                '&:hover': {
+                  backgroundColor: '#e8f5e9',
+                  '& .MuiListItemIcon-root': {
+                    color: 'green',
+                  },
+                  '& .MuiTypography-root': {
+                    color: 'green',
+                    fontWeight: 'bold'
+                  }
+                }
+              }}
+            >
+              <ListItemIcon>
+                <LocalFloristIcon sx={{ color: location.pathname === '/dashboard' ? 'green' : 'inherit' }} />
+              </ListItemIcon>
+              <ListItemText 
+                primary="Search Plants" 
+                sx={{ 
+                  color: location.pathname === '/dashboard' ? 'green' : 'inherit',
+                  fontWeight: location.pathname === '/dashboard' ? 'bold' : 'normal'
+                }} 
+              />
+            </ListItem>
+            <ListItem 
+              button 
+              onClick={() => navigate("/personalized-care")}
+              sx={{
+                cursor: 'pointer',
+                backgroundColor: location.pathname === '/personalized-care' ? '#e8f5e9' : 'inherit',
+                '&:hover': {
+                  backgroundColor: '#e8f5e9',
+                  '& .MuiListItemIcon-root': {
+                    color: 'green',
+                  },
+                  '& .MuiTypography-root': {
+                    color: 'green',
+                    fontWeight: 'bold'
+                  }
+                }
+              }}
+            >
+              <ListItemIcon>
+                <SpaIcon sx={{ color: location.pathname === '/personalized-care' ? 'green' : 'inherit' }} />
+              </ListItemIcon>
+              <ListItemText 
+                primary="Personalized Care" 
+                sx={{ 
+                  color: location.pathname === '/personalized-care' ? 'green' : 'inherit',
+                  fontWeight: location.pathname === '/personalized-care' ? 'bold' : 'normal'
+                }} 
+              />
+            </ListItem>
+            <ListItem 
+              button 
+              onClick={() => navigate("/plant-tracking")}
+              sx={{
+                cursor: 'pointer',
+                backgroundColor: location.pathname === '/plant-tracking' ? '#e8f5e9' : 'inherit',
+                '&:hover': {
+                  backgroundColor: '#e8f5e9',
+                  '& .MuiListItemIcon-root': {
+                    color: 'green',
+                  },
+                  '& .MuiTypography-root': {
+                    color: 'green',
+                    fontWeight: 'bold'
+                  }
+                }
+              }}
+            >
+              <ListItemIcon>
+                <TrackChangesIcon sx={{ color: location.pathname === '/plant-tracking' ? 'green' : 'inherit' }} />
+              </ListItemIcon>
+              <ListItemText 
+                primary="Plant Tracking" 
+                sx={{ 
+                  color: location.pathname === '/plant-tracking' ? 'green' : 'inherit',
+                  fontWeight: location.pathname === '/plant-tracking' ? 'bold' : 'normal'
+                }} 
+              />
+            </ListItem>
+          </List>
+          <Divider />
         </Box>
+      </Drawer>
+
+      {/* Space below AppBar */}
+      <Toolbar />
+
+      {/* Search Section */}
+      <Box sx={{ padding: 3 }}>
+        <Paper sx={{ padding: 3 }}>
+          <Typography variant="h6" fontWeight="bold"> Search for Plants</Typography>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 2, marginTop: 2, flexWrap: "wrap" }}>
+            <TextField
+              label="Plant Name"
+              variant="outlined"
+              size="small"
+              sx={{ minWidth: "250px" }}
+              placeholder="Enter plant name"
+              value={search.name}
+              onChange={(e) => setSearch({ ...search, name: e.target.value })}
+            />
+
+            {[
+              { label: "Category", field: "category", options: ["Flowering", "Vegetable", "Fruit"] },
+              { label: "Soil Type", field: "soil_type", options: ["Loamy", "Sandy", "Clay", "Silty", "Peaty", "Chalky", "Saline"] },
+              { label: "Climate", field: "climate", options: ["Tropical", "Temperate", "Arid", "Mediterranean", "Subtropical", "Continental", "Polar", "Cool", "Warm"] }
+            ].map(({ label, field, options }) => (
+              <FormControl key={field} size="small" sx={{ minWidth: "150px" }}>
+                <InputLabel>{label}</InputLabel>
+                <Select
+                  value={search[field]}
+                  onChange={(e) => setSearch({ ...search, [field]: e.target.value })}
+                >
+                  <MenuItem value="">Any {label}</MenuItem>
+                  {options.map((option) => (
+                    <MenuItem key={option} value={option}>{option}</MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            ))}
+
+            <Button variant="contained" color="success" startIcon={<SearchIcon />} onClick={handleSearch}>
+              Search
+            </Button>
+          </Box>
+        </Paper>
+      </Box>
+
+      {/* Results Table */}
+      <Box sx={{ padding: 3 }}>
+        <TableContainer component={Paper}>
+          <Table>
+            <TableHead>
+              <TableRow sx={{ backgroundColor: "#66BB6A" }}>
+                {["Name", "Category", "Soil Type", "Climate", "Care Instructions"].map((col) => (
+                  <TableCell key={col} sx={{ fontWeight: "bold", color: "white" }}>{col}</TableCell>
+                ))}
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {plants.length > 0 ? plants.map((plant) => (
+                <TableRow key={plant.id}>
+                  <TableCell>{plant.name}</TableCell>
+                  <TableCell>{plant.category}</TableCell>
+                  <TableCell>{plant.soil_type}</TableCell>
+                  <TableCell>{plant.climate}</TableCell>
+                  <TableCell>{plant.care_instructions}</TableCell>
+                </TableRow>
+              )) : (
+                <TableRow><TableCell colSpan={5} sx={{ textAlign: "center" }}>No plants found 🌱</TableCell></TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </TableContainer>
       </Box>
     </Box>
   );

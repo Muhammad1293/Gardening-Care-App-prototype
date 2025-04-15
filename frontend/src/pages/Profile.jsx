@@ -1,64 +1,198 @@
 import React, { useState, useEffect } from "react";
-import { Container, TextField, Button, Typography, Box } from "@mui/material";
+import {
+  Container, Paper, Typography, TextField, Button, MenuItem,
+  Box, Checkbox, FormControlLabel, Autocomplete, IconButton, Snackbar
+} from "@mui/material";
+import ArrowBackIcon from "@mui/icons-material/ArrowBack";
+import MuiAlert from "@mui/material/Alert";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 
+// Predefined Lists
+const roles = ["Gardener", "Supervisor", "Homeowner", "System Admin"];
+const gardeningOptions = ["Flower Gardening", "Vegetable Gardening", "Fruit Gardening"];
+const climateOptions = ["Tropical", "Temperate", "Arid", "Mediterranean", "Subtropical", "Continental", "Polar", "Cool", "Warm"];
+const soilTypeOptions = ["Loamy", "Sandy", "Clay", "Silty", "Peaty", "Chalky", "Saline"];
+const locations = [ "Islamabad", "Lahore", "Karachi", "Peshawar", "Quetta", "Multan", "Rawalpindi", "Faisalabad", "Sialkot", "Gujranwala",
+  "New Delhi", "Mumbai", "Bangalore", "Hyderabad", "Chennai", "Kolkata", "Ahmedabad", "Pune", "Jaipur", "Lucknow",
+  "Dubai", "Abu Dhabi", "Riyadh", "Jeddah", "Doha", "Kuwait City", "Muscat", "Manama", "Baghdad", "Tehran",
+  "Dhaka", "Kathmandu", "Colombo", "Male", "Thimphu", "Jakarta", "Kuala Lumpur", "Singapore", "Bangkok", "Hanoi",
+  "Manila", "Yangon", "Tokyo", "Seoul", "Beijing", "Shanghai", "Hong Kong", "Taipei", "London", "Paris",
+  "Berlin", "Madrid", "Rome", "Amsterdam", "Brussels", "Vienna", "Stockholm", "New York", "Los Angeles",
+  "Chicago", "Houston", "Miami", "Toronto", "Vancouver", "Sydney", "Melbourne"
+];
+
 const Profile = () => {
-  const [profile, setProfile] = useState({ username: "", email: "", role: "", gardening_preferences: "" });
-  const [edit, setEdit] = useState(false);
   const navigate = useNavigate();
+  const [userData, setUserData] = useState({
+    username: "", email: "", role: "", location: "",
+    climate: "", soil_type: "", gardening_preferences: []
+  });
+  const [isEditing, setIsEditing] = useState(false);
+  const [originalData, setOriginalData] = useState({});
+  const [successMessage, setSuccessMessage] = useState("");
 
   useEffect(() => {
-    const token = localStorage.getItem("token");
-    if (!token) {
-      navigate("/login");
-    } else {
-      axios.get("http://localhost:5000/api/auth/profile", {
-        headers: { Authorization: `Bearer ${token}` }
-      })
-      .then(res => setProfile(res.data))
-      .catch(err => console.error("Error fetching profile:", err));
-    }
-  }, [navigate]);
+    const fetchProfile = async () => {
+      try {
+        const token = localStorage.getItem("token");
+        const res = await axios.get("http://localhost:5000/api/users/profile", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        const profile = res.data;
+        if (!Array.isArray(profile.gardening_preferences)) {
+          profile.gardening_preferences = [];
+        }
+
+        setUserData(profile);
+        setOriginalData(profile); // Save for cancel
+      } catch (error) {
+        console.error("Error fetching profile:", error);
+      }
+    };
+    fetchProfile();
+  }, []);
 
   const handleChange = (e) => {
-    setProfile({...profile, [e.target.name]: e.target.value});
+    setUserData({ ...userData, [e.target.name]: e.target.value });
   };
 
-  const handleUpdate = () => {
-    const token = localStorage.getItem("token");
-    axios.put("http://localhost:5000/api/auth/profile", {
-      username: profile.username,
-      gardening_preferences: profile.gardening_preferences
-    }, { headers: { Authorization: `Bearer ${token}` } })
-    .then(res => {
-      alert("Profile updated successfully!");
-      setEdit(false);
-    })
-    .catch(err => {
-      alert("Failed to update profile");
-      console.error(err);
-    });
+  const handleLocationChange = (_, newValue) => {
+    setUserData((prev) => ({ ...prev, location: newValue }));
+  };
+
+  const handleCheckboxChange = (e) => {
+    const value = e.target.name;
+    setUserData((prev) => ({
+      ...prev,
+      gardening_preferences: prev.gardening_preferences.includes(value)
+        ? prev.gardening_preferences.filter((item) => item !== value)
+        : [...prev.gardening_preferences, value],
+    }));
+  };
+
+  const validateEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!validateEmail(userData.email)) {
+      alert("Please enter a valid email address.");
+      return;
+    }
+    try {
+      const token = localStorage.getItem("token");
+      await axios.put("http://localhost:5000/api/users/profile", userData, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setSuccessMessage("Profile updated successfully!");
+      setIsEditing(false);
+      
+      // Redirect after short delay to show snackbar
+      setTimeout(() => {
+        navigate("/dashboard");
+      }, 2000);
+      
+    } catch (error) {
+      console.error("Error updating profile:", error);
+    }
+  };
+  
+
+  const handleCancel = () => {
+    setUserData(originalData);
+    setIsEditing(false);
   };
 
   return (
     <Container maxWidth="sm">
-      <Box sx={{ mt: 5, p: 3, boxShadow: 3, borderRadius: 2 }}>
-        <Typography variant="h5" gutterBottom>User Profile</Typography>
-        <TextField fullWidth label="Username" name="username" value={profile.username} onChange={handleChange} margin="normal" disabled={!edit} />
-        <TextField fullWidth label="Email" name="email" value={profile.email} margin="normal" disabled />
-        <TextField fullWidth label="Role" name="role" value={profile.role} margin="normal" disabled />
-        <TextField fullWidth label="Gardening Preferences" name="gardening_preferences" value={profile.gardening_preferences} onChange={handleChange} margin="normal" disabled={!edit} />
-        {edit ? (
-          <Button variant="contained" color="primary" onClick={handleUpdate} sx={{ mt: 2 }}>
-            Save
-          </Button>
-        ) : (
-          <Button variant="contained" color="primary" onClick={() => setEdit(true)} sx={{ mt: 2 }}>
-            Edit Profile
-          </Button>
-        )}
-      </Box>
+      <Paper elevation={3} sx={{ padding: 4, textAlign: "center", marginTop: 6, backgroundColor: "#f9fff3" }}>
+        
+        {/* Back Button + Heading */}
+        <Box sx={{ display: "flex", alignItems: "center", justifyContent: "left", gap: 1, marginBottom: 2 }}>
+          <IconButton onClick={() => navigate(-1)} color="success">
+            <ArrowBackIcon />
+          </IconButton>
+          <Typography variant="h5" fontWeight="bold" color="primary">
+            Profile Details
+          </Typography>
+        </Box>
+
+        <form onSubmit={handleSubmit} style={{ marginTop: 16 }}>
+          <TextField fullWidth label="Username" name="username" value={userData.username} onChange={handleChange} variant="outlined" margin="normal" disabled={!isEditing} />
+          <TextField fullWidth label="Email" name="email" type="email" value={userData.email} onChange={handleChange} variant="outlined" margin="normal" disabled={!isEditing} />
+          <TextField fullWidth select label="Role" name="role" value={userData.role} onChange={handleChange} variant="outlined" margin="normal" disabled={!isEditing}>
+            {roles.map((role) => (
+              <MenuItem key={role} value={role}>{role}</MenuItem>
+            ))}
+          </TextField>
+
+          <Autocomplete
+            options={locations}
+            value={userData.location}
+            onChange={handleLocationChange}
+            disabled={!isEditing}
+            renderInput={(params) => (
+              <TextField {...params} label="Search & Select Location" variant="outlined" margin="normal" fullWidth />
+            )}
+          />
+
+          <TextField fullWidth select label="Climate" name="climate" value={userData.climate} onChange={handleChange} variant="outlined" margin="normal" disabled={!isEditing}>
+            {climateOptions.map((option) => (
+              <MenuItem key={option} value={option}>{option}</MenuItem>
+            ))}
+          </TextField>
+
+          <TextField fullWidth select label="Soil Type" name="soil_type" value={userData.soil_type} onChange={handleChange} variant="outlined" margin="normal" disabled={!isEditing}>
+            {soilTypeOptions.map((option) => (
+              <MenuItem key={option} value={option}>{option}</MenuItem>
+            ))}
+          </TextField>
+
+          <Typography variant="subtitle1" sx={{ textAlign: "left", marginTop: 2 }}>
+            Gardening Preferences:
+          </Typography>
+          <Box sx={{ display: "flex", flexDirection: "column", alignItems: "start" }}>
+            {gardeningOptions.map((option) => (
+              <FormControlLabel
+                key={option}
+                control={
+                  <Checkbox
+                    checked={userData.gardening_preferences.includes(option)}
+                    onChange={handleCheckboxChange}
+                    name={option}
+                    disabled={!isEditing}
+                  />
+                }
+                label={option}
+              />
+            ))}
+          </Box>
+
+          {isEditing ? (
+            <Box sx={{ display: "flex", gap: 2, marginTop: 2 }}>
+              <Button type="submit" variant="contained" color="success" fullWidth>Save</Button>
+              <Button onClick={handleCancel} variant="outlined" fullWidth>Cancel</Button>
+            </Box>
+          ) : (
+            <Button variant="contained" onClick={() => setIsEditing(true)} fullWidth sx={{ marginTop: 2 }}>
+              Edit Profile
+            </Button>
+          )}
+        </form>
+      </Paper>
+
+      {/* Snackbar Success Toast */}
+      <Snackbar
+        open={!!successMessage}
+        autoHideDuration={3000}
+        onClose={() => setSuccessMessage("")}
+        anchorOrigin={{ vertical: "top", horizontal: "center" }}
+      >
+        <MuiAlert elevation={6} variant="filled" severity="success" onClose={() => setSuccessMessage("")}>
+          {successMessage}
+        </MuiAlert>
+      </Snackbar>
     </Container>
   );
 };
