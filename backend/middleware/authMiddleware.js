@@ -19,11 +19,17 @@ const authMiddleware = async (req, res, next) => {
       return res.status(401).json({ message: "Unauthorized: User not found" });
     }
 
-    req.user = user.rows[0];
+    //  Attach full user object and map `.id` for compatibility
+    req.user = {
+      ...user.rows[0],
+      id: user.rows[0].user_id, // Add `id` to make it compatible
+    };
+
     next();
   } catch (error) {
+    console.error("Auth middleware error:", error);
     res.status(401).json({ message: "Unauthorized: Invalid token" });
   }
 };
 
-export default authMiddleware; //  Use "export default"
+export default authMiddleware;

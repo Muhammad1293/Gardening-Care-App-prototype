@@ -88,4 +88,58 @@ router.delete("/remove/:reminder_id", authMiddleware, async (req, res) => {
   }
 });
 
+/**
+ *  GET: Fetch reminders that are due (reminder_date <= now)
+ */
+router.get("/due", authMiddleware, async (req, res) => {
+  try {
+    const user_id = req.user.id;
+
+    const result = await pool.query(
+      `SELECT r.id, r.reminder_type, r.reminder_date, r.frequency, p.name AS plant_name
+       FROM reminders r
+       JOIN plant_tracking pt ON r.tracking_id = pt.id
+       JOIN plants p ON pt.plant_id = p.id
+       WHERE pt.user_id = $1 AND r.reminder_date <= (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Karachi')  AND r.is_done = false
+       ORDER BY r.reminder_date DESC`,
+      [user_id]
+    );
+
+    res.json(result.rows);
+  } catch (error) {
+    console.error("Error fetching due reminders:", error);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+/**
+ *  PATCH: Mark a reminder as done
+ */
+router.patch("/mark-done/:reminder_id", authMiddleware, async (req, res) => {
+  try {
+    const { reminder_id } = req.params;
+    const user_id = req.user.id;
+
+    const reminderCheck = await pool.query(
+      `SELECT r.id FROM reminders r
+       JOIN plant_tracking pt ON r.tracking_id = pt.id
+       WHERE r.id = $1 AND pt.user_id = $2`,
+      [reminder_id, user_id]
+    );
+
+    if (reminderCheck.rows.length === 0) {
+      return res.status(404).json({ error: "Reminder not found or unauthorized" });
+    }
+
+    await pool.query("UPDATE reminders SET is_done = true WHERE id = $1", [reminder_id]);
+
+    res.json({ message: "Reminder marked as done" });
+  } catch (error) {
+    console.error("Error marking reminder as done:", error);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+
+
 export default router;
