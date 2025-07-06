@@ -10,6 +10,14 @@ import LogoutIcon from "@mui/icons-material/ExitToApp";
 import LocalFloristIcon from "@mui/icons-material/LocalFlorist";
 import SpaIcon from "@mui/icons-material/Spa";
 import TrackChangesIcon from "@mui/icons-material/TrackChanges";
+import Dialog from "@mui/material/Dialog";
+import DialogActions from "@mui/material/DialogActions";
+import DialogContent from "@mui/material/DialogContent";
+import DialogTitle from "@mui/material/DialogTitle";
+import AddIcon from "@mui/icons-material/Add";
+import NotificationsIcon from "@mui/icons-material/Notifications";
+import Badge from "@mui/material/Badge";
+import LibraryBooksIcon from "@mui/icons-material/LibraryBooks"; 
 
 import { useNavigate, useLocation } from "react-router-dom";
 import axios from "axios";
@@ -19,6 +27,9 @@ const Dashboard = () => {
   const location = useLocation();
   const [plants, setPlants] = useState([]);
   const [search, setSearch] = useState({ name: "", category: "", soil_type: "", climate: "" });
+  const [openDialog, setOpenDialog] = useState(false);
+const [selectedPlantId, setSelectedPlantId] = useState(null);
+const [nicknameInput, setNicknameInput] = useState("");
   const [anchorEl, setAnchorEl] = useState(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [user, setUser] = useState(null);
@@ -39,6 +50,33 @@ const Dashboard = () => {
       console.error("Error fetching plants:", error);
     }
   };
+
+  const handleOpenDialog = (plantId) => {
+  setSelectedPlantId(plantId);
+  setNicknameInput("");
+  setOpenDialog(true);
+};
+
+const handleCloseDialog = () => {
+  setOpenDialog(false);
+};
+
+const handleAddPlantWithNickname = async () => {
+  try {
+    const token = localStorage.getItem("token");
+    await axios.post(
+      "http://localhost:5000/api/plant-tracking/add",
+      { plant_id: selectedPlantId, nickname: nicknameInput },
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+    alert(" Plant added to your tracking list!");
+    handleCloseDialog();
+  } catch (error) {
+    console.error("Error adding plant:", error);
+    alert(" Failed to add plant. Maybe it's already tracked.");
+  }
+};
+
 
   const fetchUserData = async () => {
     try {
@@ -93,6 +131,12 @@ const Dashboard = () => {
           {/* Right: Profile */}
           {user && (
             <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+              {/* Notifications Button (Left of Avatar) */}
+    <IconButton onClick={() => navigate("/notifications")} sx={{ color: "white" }}>
+      <Badge badgeContent={0} color="error">
+        <NotificationsIcon />
+      </Badge>
+    </IconButton>
               <Box sx={{ cursor: "pointer", display: "flex", alignItems: "center" }} onClick={handleMenuClick}>
                 <Avatar sx={{ bgcolor: "#ffffff", color: "green", width: 40, height: 40 }}>
                   {user.username ? user.username.charAt(0).toUpperCase() : "U"}
@@ -206,6 +250,34 @@ const Dashboard = () => {
                 }} 
               />
             </ListItem>
+            <ListItem 
+  button 
+  onClick={() => navigate("/interactive-tools")}
+  sx={{
+    cursor: 'pointer',
+    backgroundColor: location.pathname === '/interactive-tools' ? '#e8f5e9' : 'inherit',
+    '&:hover': {
+      backgroundColor: '#e8f5e9',
+      '& .MuiListItemIcon-root': { color: 'green' },
+      '& .MuiTypography-root': {
+        color: 'green',
+        fontWeight: 'bold'
+      }
+    }
+  }}
+>
+  <ListItemIcon>
+    <LibraryBooksIcon sx={{ color: location.pathname === '/interactive-tools' ? 'green' : 'inherit' }} />
+  </ListItemIcon>
+  <ListItemText 
+    primary="Tools & Resources" 
+    sx={{ 
+      color: location.pathname === '/interactive-tools' ? 'green' : 'inherit',
+      fontWeight: location.pathname === '/interactive-tools' ? 'bold' : 'normal'
+    }} 
+  />
+</ListItem>
+
           </List>
           <Divider />
         </Box>
@@ -261,7 +333,7 @@ const Dashboard = () => {
           <Table>
             <TableHead>
               <TableRow sx={{ backgroundColor: "#66BB6A" }}>
-                {["Name", "Category", "Soil Type", "Climate", "Care Instructions"].map((col) => (
+                {["Name", "Category", "Soil Type", "Climate", "Care Instructions", "Action"].map((col) => (
                   <TableCell key={col} sx={{ fontWeight: "bold", color: "white" }}>{col}</TableCell>
                 ))}
               </TableRow>
@@ -274,14 +346,46 @@ const Dashboard = () => {
                   <TableCell>{plant.soil_type}</TableCell>
                   <TableCell>{plant.climate}</TableCell>
                   <TableCell>{plant.care_instructions}</TableCell>
+                  <TableCell>
+                  <Button
+                      variant="outlined"
+                      color="success"
+                      size="small"
+                      startIcon={<AddIcon />}
+                      onClick={() => handleOpenDialog(plant.id)}
+                       >
+                      Add to My Plants
+                  </Button>
+                 </TableCell>
+
                 </TableRow>
               )) : (
-                <TableRow><TableCell colSpan={5} sx={{ textAlign: "center" }}>No plants found 🌱</TableCell></TableRow>
+                <TableRow><TableCell colSpan={5} sx={{ textAlign: "center" }}>No plants found </TableCell></TableRow>
               )}
             </TableBody>
           </Table>
         </TableContainer>
       </Box>
+      <Dialog open={openDialog} onClose={handleCloseDialog}>
+  <DialogTitle>Add Plant to Tracking</DialogTitle>
+  <DialogContent>
+    <TextField
+      autoFocus
+      margin="dense"
+      label="Nickname (Optional)"
+      fullWidth
+      value={nicknameInput}
+      onChange={(e) => setNicknameInput(e.target.value)}
+    />
+  </DialogContent>
+  <DialogActions>
+    <Button onClick={handleCloseDialog} color="inherit">Cancel</Button>
+    <Button onClick={handleAddPlantWithNickname} variant="contained" color="success">
+      Add
+    </Button>
+  </DialogActions>
+</Dialog>
+
     </Box>
   );
 };

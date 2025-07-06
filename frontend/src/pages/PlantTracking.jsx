@@ -14,11 +14,13 @@ import SpaIcon from "@mui/icons-material/Spa";
 import TrackChangesIcon from "@mui/icons-material/TrackChanges";
 import { useNavigate, useLocation } from "react-router-dom";
 import axios from "axios";
+import NotificationsIcon from "@mui/icons-material/Notifications";
+import Badge from "@mui/material/Badge";
+import LibraryBooksIcon from "@mui/icons-material/LibraryBooks"; 
 
 const PlantTracking = () => {
   const navigate = useNavigate();
   const location = useLocation();
-
   const [plants, setPlants] = useState([]);
   const [userPlants, setUserPlants] = useState([]);
   const [selectedPlant, setSelectedPlant] = useState("");
@@ -27,71 +29,67 @@ const PlantTracking = () => {
   const [user, setUser] = useState(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
 
-  useEffect(() => {
-    fetchPlants();
-    fetchUserData(); // loads the user
-  }, []);
-  
-  useEffect(() => {
-    if (user) {
-      console.log("User loaded:", user); // optional debug
-      fetchUserPlants(); // fetches user-specific plant tracking
-    }
-  }, [user]);
-  
-
-  const fetchPlants = async () => {
-    try {
-      const token = localStorage.getItem("token");
-      const response = await axios.get("http://localhost:5000/api/plants", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      setPlants(response.data);
-    } catch (error) {
-      console.error("Error fetching plants:", error);
-    }
-  };
-
-  const fetchUserData = async () => {
+ useEffect(() => {
+  const fetchUser = async () => {
     try {
       const token = localStorage.getItem("token");
       if (!token) return;
-      const response = await axios.get("http://localhost:5000/api/users/profile", {
+      const userRes = await axios.get("http://localhost:5000/api/users/profile", {
         headers: { Authorization: `Bearer ${token}` },
       });
-      setUser(response.data);
+      setUser(userRes.data);
     } catch (error) {
-      console.error("Error fetching user data:", error);
+      console.error("Error fetching user profile:", error);
     }
   };
+  fetchUser();
+}, []);
 
-  const fetchUserPlants = async () => {
+useEffect(() => {
+  const fetchData = async () => {
     try {
       const token = localStorage.getItem("token");
-      const response = await axios.get("http://localhost:5000/api/plant-tracking", {
+      if (!token) return;
+
+      const plantsRes = await axios.get("http://localhost:5000/api/plants", {
         headers: { Authorization: `Bearer ${token}` },
       });
-      setUserPlants(response.data);
+      setPlants(plantsRes.data);
+
+      const trackedRes = await axios.get("http://localhost:5000/api/plant-tracking", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setUserPlants(trackedRes.data);
     } catch (error) {
-      console.error("Error fetching user plants:", error);
+      console.error("Error fetching plants or tracked plants:", error);
     }
   };
 
+  // Run only after user is loaded
+  if (user) fetchData();
+}, [user]);
+ 
   const handleAddPlant = async () => {
-    try {
-      const token = localStorage.getItem("token");
-      const response = await axios.post(
-        "http://localhost:5000/api/plant-tracking/add",
-        { plant_id: selectedPlant, nickname },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      setUserPlants([...userPlants, response.data]);
-      setSelectedPlant("");
-      setNickname("");
-    } catch (error) {
-      console.error("Error adding plant:", error);
+  try {
+    const token = localStorage.getItem("token");
+    const response = await axios.post(
+      "http://localhost:5000/api/plant-tracking/add",
+      { plant_id: selectedPlant, nickname },
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+
+    // Make sure you append the new plant to userPlants
+    if (response.data) {
+      setUserPlants((prev) => [...prev, response.data]);
     }
-  };
+
+    setSelectedPlant("");
+    setNickname("");
+  } catch (error) {
+    console.error("Error adding plant:", error);
+  }
+};
+
 
   const handleRemovePlant = async (trackingId) => {
     try {
@@ -128,6 +126,12 @@ const PlantTracking = () => {
 
           {user && (
             <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+                {/* Notifications Button (Left of Avatar) */}
+                  <IconButton onClick={() => navigate("/notifications")} sx={{ color: "white" }}>
+                    <Badge badgeContent={0} color="error">
+                      <NotificationsIcon />
+                    </Badge>
+                  </IconButton>
               <Box onClick={handleMenuClick} sx={{ cursor: "pointer", display: "flex", alignItems: "center" }}>
                 <Avatar sx={{ bgcolor: "#ffffff", color: "green" }}>
                   {user.username ? user.username.charAt(0).toUpperCase() : "U"}
@@ -183,6 +187,33 @@ const PlantTracking = () => {
             >
               <ListItemIcon><TrackChangesIcon sx={{ color: location.pathname === '/plant-tracking' ? 'green' : 'inherit' }} /></ListItemIcon>
               <ListItemText primary="Plant Tracking" />
+            </ListItem>
+            <ListItem 
+              button 
+              onClick={() => navigate("/interactive-tools")}
+              sx={{
+                cursor: 'pointer',
+                backgroundColor: location.pathname === '/interactive-tools' ? '#e8f5e9' : 'inherit',
+                '&:hover': {
+                  backgroundColor: '#e8f5e9',
+                  '& .MuiListItemIcon-root': { color: 'green' },
+                  '& .MuiTypography-root': {
+                    color: 'green',
+                    fontWeight: 'bold'
+                  }
+                }
+              }}
+            >
+              <ListItemIcon>
+                <LibraryBooksIcon sx={{ color: location.pathname === '/interactive-tools' ? 'green' : 'inherit' }} />
+              </ListItemIcon>
+              <ListItemText 
+                primary="Tools & Resources" 
+                sx={{ 
+                  color: location.pathname === '/interactive-tools' ? 'green' : 'inherit',
+                  fontWeight: location.pathname === '/interactive-tools' ? 'bold' : 'normal'
+                }} 
+              />
             </ListItem>
           </List>
           <Divider />

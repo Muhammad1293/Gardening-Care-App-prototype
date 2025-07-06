@@ -1,5 +1,20 @@
 import React, { useState } from "react";
-import { TextField, Button, Container, Typography, Paper, MenuItem, Box, Alert } from "@mui/material";
+import {
+  TextField,
+  Button,
+  Container,
+  Typography,
+  Paper,
+  MenuItem,
+  Box,
+  Alert,
+  FormControl,
+  InputLabel,
+  OutlinedInput,
+  InputAdornment,
+  IconButton
+} from "@mui/material";
+import { Visibility, VisibilityOff } from "@mui/icons-material";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 
@@ -8,6 +23,7 @@ const roles = ["Gardener", "Supervisor", "Homeowner", "System Admin"];
 const Register = () => {
   const [formData, setFormData] = useState({ username: "", email: "", password: "", role: "" });
   const [message, setMessage] = useState({ type: "", text: "" });
+  const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
 
   const handleChange = (e) => {
@@ -45,7 +61,7 @@ const Register = () => {
     <Container maxWidth="sm">
       <Paper elevation={3} sx={{ padding: 4, textAlign: "center", marginTop: 6, backgroundColor: "#f9fff3" }}>
         <Typography variant="h5" fontWeight="bold" color="primary" gutterBottom>
-           Gardening Care - Register
+          Gardening Care - Register
         </Typography>
 
         {message.text && <Alert severity={message.type} sx={{ marginBottom: 2 }}>{message.text}</Alert>}
@@ -80,21 +96,36 @@ const Register = () => {
             margin="normal"
             required
           >
-            <MenuItem value="" >Select your role</MenuItem>
+            <MenuItem value="">Select your role</MenuItem>
             {roles.map((role) => (
               <MenuItem key={role} value={role}>{role}</MenuItem>
             ))}
           </TextField>
-          <TextField
-            fullWidth
-            label="Password"
-            name="password"
-            type="password"
-            variant="outlined"
-            margin="normal"
-            onChange={handleChange}
-            required
-          />
+
+          {/* Password field with show/hide toggle */}
+          <FormControl fullWidth variant="outlined" margin="normal">
+            <InputLabel htmlFor="register-password">Password</InputLabel>
+            <OutlinedInput
+              id="register-password"
+              name="password"
+              type={showPassword ? "text" : "password"}
+              value={formData.password}
+              onChange={handleChange}
+              label="Password"
+              endAdornment={
+                <InputAdornment position="end">
+                  <IconButton
+                    onClick={() => setShowPassword((prev) => !prev)}
+                    edge="end"
+                    aria-label={showPassword ? "Hide password" : "Show password"}
+                  >
+                    {showPassword ? <VisibilityOff /> : <Visibility />}
+                  </IconButton>
+                </InputAdornment>
+              }
+            />
+          </FormControl>
+
           <Button type="submit" variant="contained" color="success" fullWidth sx={{ marginTop: 2 }}>
             Register
           </Button>

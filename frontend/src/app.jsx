@@ -10,6 +10,12 @@ import SetReminder from "./pages/SetReminder";
 import GrowthLogs from "./pages/GrowthLogs";
 import HealthMonitoring from "./pages/HealthMonitoring";
 import Observations from "./pages/Observations";
+import Notifications from "./pages/Notifications";
+import InteractiveTools from "./pages/InteractiveTools"; 
+import ArticleDetail from "./pages/ArticleDetail";
+import AddArticle from "./pages/AddArticle";
+
+
 
 import { createTheme, ThemeProvider } from "@mui/material/styles";
 import { CssBaseline } from "@mui/material";
@@ -43,7 +49,14 @@ const App = () => {
         {/* Functional Routes for Tracking Feature */}
         <Route path="/growth-logs/:trackingId" element={<GrowthLogs />} />
         <Route path="/health-monitoring/:trackingId" element={<HealthMonitoring />} />
-        <Route path="/observations/:trackingId" element={<Observations />} />
+        <Route path="/observations/:plantId" element={<Observations />} />
+        <Route path="/notifications" element={<Notifications />} />
+        <Route path="/interactive-tools" element={<InteractiveTools />} />
+        <Route path="/articles/:id" element={<ArticleDetail />} />
+        <Route path="/articles/new" element={<AddArticle />} />
+
+
+
       </Routes>
     </ThemeProvider>
   );
