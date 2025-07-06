@@ -47,8 +47,8 @@ Make sure you have the following installed on your machine:
 Installation
 1.	Clone the repository:
 Bash
-git clone :https://github.com/Muhammad1293/Gardening-Care-App
-cd Gardening-Care-App
+git clone https://github.com/YOUR_USERNAME/YOUR_REPOSITORY_NAME.git
+cd YOUR_REPOSITORY_NAME
 2.	Backend Setup:
 Bash
 cd server # or backend folder name if different
